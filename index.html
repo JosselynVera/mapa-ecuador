@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Ecuador - Tooltip</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            color: #fbbf24;
+            margin-bottom: 30px;
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        #ecuadorMap {
+            width: 100%;
+            height: auto;
+            max-height: 700px;
+        }
+
+        .province {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            stroke: white;
+            stroke-width: 1.5;
+        }
+
+        .province:hover {
+            stroke-width: 3;
+            filter: brightness(1.2);
+        }
+
+        .province-label {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            color: #f1f5f9;
+            padding: 8px 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            font-size: 14px;
+            max-width: 220px;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🇪🇨 Mapa de Ecuador</h1>
+        <div class="map-container">
+            <svg id="ecuadorMap" viewBox="0 0 650 520" xmlns="http://www.w3.org/2000/svg">
+                <!-- Provincias se generan con JS -->
+            </svg>
+        </div>
+    </div>
+
+    <!-- Tooltip flotante -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const mapData = {
+            "shapes": [
+                {"name":"Galápagos","points":[{"x":24,"y":137},{"x":33,"y":143},{"x":37,"y":157},{"x":29,"y":153},{"x":21,"y":159},{"x":30,"y":173},{"x":39,"y":167},{"x":40,"y":160},{"x":51,"y":172},{"x":30,"y":189},{"x":53,"y":202},{"x":77,"y":189},{"x":72,"y":174},{"x":64,"y":165},{"x":50,"y":149},{"x":52,"y":139},{"x":37,"y":124}],"color":"#4caf50"},
+                {"name":"Esmeraldas","points":[{"x":260,"y":90},{"x":252,"y":50},{"x":350,"y":3},{"x":373,"y":19},{"x":381,"y":67},{"x":358,"y":81},{"x":314,"y":85},{"x":310,"y":105},{"x":281,"y":96},{"x":284,"y":84},{"x":272,"y":76}],"color":"#4caf50"},
+                {"name":"Carchi","points":[{"x":375,"y":23},{"x":387,"y":17},{"x":390,"y":30},{"x":420,"y":47},{"x":434,"y":43},{"x":441,"y":59},{"x":422,"y":81},{"x":377,"y":43}],"color":"#2196f3"},
+                {"name":"Imbabura","points":[{"x":422,"y":84},{"x":411,"y":96},{"x":330,"y":84},{"x":362,"y":82},{"x":382,"y":63},{"x":378,"y":44}],"color":"#9c27b0"},
+                {"name":"Sucumbios","points":[{"x":414,"y":99},{"x":422,"y":81},{"x":445,"y":60},{"x":462,"y":80},{"x":521,"y":90},{"x":531,"y":79},{"x":585,"y":106},{"x":615,"y":116},{"x":594,"y":122},{"x":618,"y":151},{"x":618,"y":156},{"x":565,"y":141},{"x":524,"y":147},{"x":487,"y":110},{"x":460,"y":115}],"color":"#e91e63"},
+                {"name":"Pichincha","points":[{"x":311,"y":107},{"x":316,"y":85},{"x":331,"y":82},{"x":399,"y":96},{"x":415,"y":97},{"x":422,"y":108},{"x":393,"y":119},{"x":380,"y":163},{"x":334,"y":137},{"x":351,"y":125}],"color":"#cddc39"},
+                {"name":"Santo domingo de los Tsachilas","points":[{"x":282,"y":96},{"x":287,"y":118},{"x":306,"y":127},{"x":298,"y":147},{"x":309,"y":148},{"x":310,"y":157},{"x":323,"y":152},{"x":331,"y":154},{"x":335,"y":142},{"x":333,"y":136},{"x":347,"y":126},{"x":308,"y":104}],"color":"#e91e63"},
+                {"name":"Manabí","points":[{"x":258,"y":91},{"x":270,"y":78},{"x":282,"y":83},{"x":282,"y":95},{"x":287,"y":121},{"x":303,"y":125},{"x":295,"y":149},{"x":287,"y":175},{"x":221,"y":252},{"x":213,"y":234},{"x":195,"y":230},{"x":203,"y":208},{"x":191,"y":189},{"x":198,"y":180},{"x":211,"y":181},{"x":227,"y":151},{"x":221,"y":142}],"color":"#673ab7"},
+                {"name":"Santa Elena","points":[{"x":198,"y":230},{"x":205,"y":263},{"x":187,"y":275},{"x":219,"y":299},{"x":237,"y":282},{"x":242,"y":267},{"x":222,"y":252},{"x":213,"y":235}],"color":"#2196f3"},
+                {"name":"Guayas","points":[{"x":288,"y":175},{"x":296,"y":175},{"x":292,"y":187},{"x":270,"y":218},{"x":283,"y":253},{"x":239,"y":311},{"x":220,"y":300},{"x":238,"y":281},{"x":243,"y":265},{"x":225,"y":249}],"color":"#f44336"},
+                {"name":"Los Rios","points":[{"x":287,"y":172},{"x":299,"y":150},{"x":305,"y":149},{"x":327,"y":156},{"x":308,"y":196},{"x":318,"y":266},{"x":283,"y":253},{"x":272,"y":219},{"x":294,"y":186},{"x":297,"y":172}],"color":"#00bcd4"},
+                {"name":"Cotopaxi","points":[{"x":337,"y":141},{"x":333,"y":154},{"x":309,"y":193},{"x":314,"y":199},{"x":377,"y":185},{"x":381,"y":164}],"color":"#ffeb3b"},
+                {"name":"Napo","points":[{"x":379,"y":164},{"x":393,"y":119},{"x":425,"y":106},{"x":464,"y":116},{"x":436,"y":148},{"x":440,"y":178},{"x":470,"y":163},{"x":477,"y":189},{"x":418,"y":204},{"x":382,"y":197},{"x":376,"y":183}],"color":"#00bcd4"},
+                {"name":"Orellana","points":[{"x":438,"y":149},{"x":462,"y":113},{"x":484,"y":110},{"x":523,"y":148},{"x":563,"y":142},{"x":617,"y":155},{"x":621,"y":184},{"x":606,"y":180},{"x":593,"y":225},{"x":517,"y":194},{"x":478,"y":190},{"x":470,"y":159},{"x":442,"y":175}],"color":"#4caf50"},
+                {"name":"Bolivar","points":[{"x":311,"y":200},{"x":346,"y":195},{"x":338,"y":206},{"x":336,"y":212},{"x":343,"y":218},{"x":342,"y":240},{"x":332,"y":245},{"x":327,"y":272},{"x":318,"y":266}],"color":"#2196f3"},
+                {"name":"Tungurahua","points":[{"x":347,"y":194},{"x":342,"y":203},{"x":338,"y":210},{"x":345,"y":220},{"x":380,"y":224},{"x":401,"y":216},{"x":384,"y":199},{"x":379,"y":184}],"color":"#4caf50"},
+                {"name":"Pastaza","points":[{"x":384,"y":200},{"x":416,"y":203},{"x":479,"y":188},{"x":593,"y":227},{"x":502,"y":305},{"x":401,"y":217}],"color":"#cddc39"},
+                {"name":"Chimborazo","points":[{"x":344,"y":219},{"x":386,"y":224},{"x":371,"y":305},{"x":325,"y":275},{"x":332,"y":249},{"x":341,"y":239}],"color":"#cddc39"},
+                {"name":"El oro","points":[{"x":282,"y":254},{"x":327,"y":275},{"x":297,"y":294},{"x":307,"y":300},{"x":277,"y":342},{"x":302,"y":358},{"x":306,"y":395},{"x":248,"y":401},{"x":239,"y":363},{"x":271,"y":338},{"x":276,"y":304},{"x":271,"y":290},{"x":265,"y":320},{"x":248,"y":337},{"x":240,"y":339},{"x":244,"y":315},{"x":256,"y":312},{"x":255,"y":293}],"color":"#cddc39"},
+                {"name":"Cañar","points":[{"x":301,"y":295},{"x":324,"y":272},{"x":367,"y":306},{"x":340,"y":324},{"x":309,"y":301}],"color":"#2196f3"},
+                {"name":"Morona Santiago","points":[{"x":371,"y":306},{"x":383,"y":223},{"x":400,"y":216},{"x":504,"y":306},{"x":419,"y":334},{"x":394,"y":365},{"x":384,"y":364},{"x":377,"y":396},{"x":357,"y":394},{"x":337,"y":359},{"x":357,"y":338}],"color":"#e91e63"},
+                {"name":"Azuay","points":[{"x":280,"y":340},{"x":310,"y":304},{"x":341,"y":324},{"x":368,"y":305},{"x":335,"y":360},{"x":326,"y":385},{"x":302,"y":357}],"color":"#00bcd4"},
+                {"name":"Loja","points":[{"x":244,"y":400},{"x":308,"y":396},{"x":303,"y":357},{"x":326,"y":384},{"x":325,"y":433},{"x":301,"y":466},{"x":284,"y":443},{"x":270,"y":444},{"x":245,"y":428},{"x":230,"y":445},{"x":220,"y":433},{"x":235,"y":422},{"x":223,"y":421},{"x":225,"y":407},{"x":236,"y":412}],"color":"#2196f3"},
+                {"name":"Zamora Chinchipe","points":[{"x":329,"y":387},{"x":336,"y":360},{"x":356,"y":390},{"x":381,"y":394},{"x":362,"y":449},{"x":334,"y":484},{"x":310,"y":488},{"x":302,"y":468},{"x":326,"y":431}],"color":"#f44336"}
+            ]
+        };
+
+        const provinceInfo = {
+            "Galápagos": { capital: "Puerto Baquerizo Moreno", curioso: "Archipiélago único, patrimonio natural." },
+            "Esmeraldas": { capital: "Esmeraldas", curioso: "Rica en cultura afroecuatoriana." },
+            "Carchi": { capital: "Tulcán", curioso: "Famosa por sus papas y frontera con Colombia." },
+            "Imbabura": { capital: "Ibarra", curioso: "Conocida como la tierra de lagos." },
+            "Sucumbios": { capital: "Nueva Loja", curioso: "Provincia amazónica rica en petróleo." },
+            "Pichincha": { capital: "Quito", curioso: "Aquí está la capital del Ecuador." },
+            "Santo domingo de los Tsachilas": { capital: "Santo Domingo", curioso: "Conocida por la cultura Tsáchila." },
+            "Manabí": { capital: "Portoviejo", curioso: "Playas y gastronomía reconocidas." },
+            "Santa Elena": { capital: "Santa Elena", curioso: "Hermosas playas en la península." },
+            "Guayas": { capital: "Guayaquil", curioso: "La provincia más poblada." },
+            "Los Rios": { capital: "Babahoyo", curioso: "Importante en agricultura y arrozales." },
+            "Cotopaxi": { capital: "Latacunga", curioso: "Aquí está el volcán Cotopaxi." },
+            "Napo": { capital: "Tena", curioso: "Rica en ríos y biodiversidad amazónica." },
+            "Orellana": { capital: "Francisco de Orellana", curioso: "Provincia amazónica con petróleo y parques." },
+            "Bolivar": { capital: "Guaranda", curioso: "Paisajes montañosos únicos." },
+            "Tungurahua": { capital: "Ambato", curioso: "Ciudad de las flores y frutas." },
+            "Pastaza": { capital: "Puyo", curioso: "Puerta de entrada a la Amazonía." },
+            "Chimborazo": { capital: "Riobamba", curioso: "Aquí está el Chimborazo, el punto más cercano al sol." },
+            "El oro": { capital: "Machala", curioso: "Importante por su producción bananera." },
+            "Cañar": { capital: "Azogues", curioso: "Rica en cultura cañari." },
+            "Morona Santiago": { capital: "Macas", curioso: "La provincia más grande del país." },
+            "Azuay": { capital: "Cuenca", curioso: "Ciudad Patrimonio Cultural." },
+            "Loja": { capital: "Loja", curioso: "Conocida por su música y cultura fronteriza." },
+            "Zamora Chinchipe": { capital: "Zamora", curioso: "Provincia minera de la Amazonía sur." }
+        };
+
+        function generatePath(points) {
+            if(points.length === 0) return '';
+            let path = `M ${points[0].x} ${points[0].y}`;
+            for(let i=1;i<points.length;i++){ path += ` L ${points[i].x} ${points[i].y}`;}
+            path += ' Z';
+            return path;
+        }
+
+        function calculateCentroid(points){
+            let x=0,y=0;
+            for(let p of points){x+=p.x;y+=p.y;}
+            return {x:x/points.length, y:y/points.length};
+        }
+
+        function createMap(){
+            const svg = document.getElementById('ecuadorMap');
+            const tooltip = document.getElementById('tooltip');
+
+            mapData.shapes.forEach(province=>{
+                const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+                path.setAttribute("d", generatePath(province.points));
+                path.setAttribute("fill", province.color);
+                path.classList.add("province");
+
+                path.addEventListener('mousemove', (e)=>{
+                    tooltip.style.display='block';
+                    tooltip.style.left=e.pageX+15+'px';
+                    tooltip.style.top=e.pageY+15+'px';
+                    tooltip.innerHTML=`<strong>${province.name}</strong><br>Capital: ${provinceInfo[province.name].capital}<br>${provinceInfo[province.name].curioso}`;
+                });
+
+                path.addEventListener('mouseout', ()=>{
+                    tooltip.style.display='none';
+                });
+
+                svg.appendChild(path);
+
+                const label = document.createElementNS("http://www.w3.org/2000/svg","text");
+                const centroid = calculateCentroid(province.points);
+                label.setAttribute("x", centroid.x);
+                label.setAttribute("y", centroid.y);
+                label.textContent=province.name;
+                label.classList.add("province-label");
+                svg.appendChild(label);
+            });
+        }
+
+        createMap();
+    </script>
+</body>
+</html>
